@@ -1,20 +1,31 @@
-import React, { useState } from "react";
+import React, { useState,useCallback } from "react";
 import lz4 from "lz4js";
 import "./App.css";
-
 import { open, TimeUtil } from "rosbag";
+import { useDropzone } from 'react-dropzone'
+const fs = require('fs')
+let topics_all = {};
 
 const App = (props: any) => {
-  const [metadata, setMetadata] = useState<any>(null);
-  const [topicList, setTopicList] = useState<string[]>([]);
-  const [topicCounter, setTopicCounter] = useState<any>();
-  const [progress, setProgress] = useState<number>(0);
-  const [msgDefinitions, setMsgDefinitions] = useState<Map<string, string[]>>(
-    new Map()
-  );
+
+  const onDrop = useCallback( acceptedFiles => {
+    // Do something with the files
+    const files = acceptedFiles;
+    parseFile(files)
+       
+  }, [])
 
   const process = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
+    parseFile(files)
+  };
+
+  const parseFile = async (files) => {
+    setIsDragFile(false)
+    setTopicList(new Array());
+    setMsgDefinitions(new Map())
+    topics_all = {}
+    
     if (files.length === 0) {
       return;
     }
@@ -36,7 +47,7 @@ const App = (props: any) => {
       md5sum: string;
     }
     Object.entries<Connection>(bag.connections).forEach(([_, v]) => {
-      // console.log(v);
+
       msgTypes.set(v.topic, [
         v.callerid,
         v.type,
@@ -46,9 +57,8 @@ const App = (props: any) => {
     });
 
     setMsgDefinitions(msgTypes);
-
+ 
     const topics = new Set<string>();
-    const counter = {};
 
     await bag.readMessages(
       {
@@ -61,81 +71,120 @@ const App = (props: any) => {
         },
       },
       (res) => {
-        const { topic, chunkOffset, totalChunks } = res;
+        const { topic, chunkOffset, totalChunks,timestamp } = res;
         topics.add(topic);
-        if (counter[topic]) {
-          counter[topic] = counter[topic] + 1;
+        let num = (timestamp.sec - bag.startTime.sec) * 500 + parseInt(((timestamp.nsec - bag.startTime.nsec) / 2000000) as any);
+        if (topics_all[topic]) {
+          let temp = topics_all[topic];
+          if (temp[temp.length - 1] !== num) {
+            temp.push(num)
+            topics_all[topic]  = temp
+          }     
         } else {
-          counter[topic] = 1;
-        }
+          let temp = new Array();
+          temp.push(num)
+          topics_all[topic]  = temp
+       }
 
         setProgress(Math.round(((chunkOffset + 1) / totalChunks) * 100));
       }
     );
-
-    setTopicCounter(counter);
     setTopicList(Array.from(topics).sort());
-  };
 
-  return (
-    <>
+
+  }
+
+  const {getRootProps, getInputProps, isDragActive} = useDropzone({onDrop})
+  
+  const [isDragFile,setIsDragFile] = useState<boolean>(true)
+  const [metadata, setMetadata] = useState<any>(null);
+  const [topicList, setTopicList] = useState<string[]>([]);
+  // const [topicCounter, setTopicCounter] = useState<any>();
+  const [progress, setProgress] = useState<number>(0);
+  const [msgDefinitions, setMsgDefinitions] = useState<Map<string, string[]>>(
+    new Map()
+  );
+  
+
+  
+
+  return ( <div >
       <div className="file">
         CHOOSE BAG:
         <input type="file" accept=".bag" onChange={process}></input>
       </div>
-      {metadata ? (
-        <div className="baginfo">
-          <hr></hr>
-          <div>
-            <b>Start Time: </b>
-            <FormatedDateTime datetime={metadata.startTime}></FormatedDateTime>
-          </div>
-          <div>
-            <b>End Time: </b>
-            <FormatedDateTime datetime={metadata.endTime}></FormatedDateTime>
-          </div>
-          <div>
-            <b>Duration: </b>
-            {metadata.duration}s
-          </div>
-          <hr />
-          {progress < 100 ? (
-            <div>{progress}%</div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Topic</th>
-                  <th>Caller ID</th>
-                  <th>Message Definition</th>
-                  <th>Message Definition MD5</th>
-                  <th>Message Count</th>
-                  <th>Message Frequency</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {topicList.map((t) => (
-                  <tr id={t}>
-                    <td>{t}</td>
-                    <td>{msgDefinitions.get(t)[0]}</td>
-                    <td>
-                      <span className="msgDef" title={msgDefinitions.get(t)[3]}>
-                        {msgDefinitions.get(t)[1]}
-                      </span>
-                    </td>
-                    <td>{msgDefinitions.get(t)[2]}</td>
-                    <td>{topicCounter[t]}</td>
-                    <td>{Math.round(topicCounter[t] / metadata.duration)}hz</td>
+    {isDragFile ?
+      (<div {...getRootProps()} style={{ width: '100%', height: '800px', backgroundColor: '#2B2A32' ,textAlign:'center',lineHeight:'800px',fontSize:'50px',color:'white'}}>
+          <input {...getInputProps()} onChange={process} />
+          {
+            isDragActive ?
+              <p>正在拖拽bag</p> :
+              <p>将文件拖拽到此处,或者单击此处上传bag</p>
+          }
+       </div>)
+      :
+      (<> {
+        metadata ? (
+            <div className="baginfo">
+            <hr></hr>
+            <div>
+              <b>Start Time: </b>
+              <FormatedDateTime datetime={metadata.startTime}></FormatedDateTime>
+            </div>
+            <div>
+              <b>End Time: </b>
+              <FormatedDateTime datetime={metadata.endTime}></FormatedDateTime>
+            </div>
+            <div>
+              <b>Duration: </b>
+              {metadata.duration}s
+            </div>
+            <hr />
+            {progress < 100 ? (
+              <div>{progress}%</div>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Topic</th>
+                    <th>Caller ID</th>
+                    <th>Message Definition</th>
+                    <th>Message Definition MD5</th>
+                    <th>Message Frequency</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      ) : null}
-    </>
-  );
+                </thead>
+
+                <tbody>
+                  {topicList && topicList.map((t) => (
+                    <tr id={t}>
+                      <td>{t}</td>
+                      <td>{msgDefinitions.get(t)[0]}</td>
+                      <td>
+                        <span className="msgDef" title={msgDefinitions.get(t)[3]}>
+                          {msgDefinitions.get(t)[1]}
+                        </span>
+                      </td>
+                      <td>{msgDefinitions.get(t)[2]}</td>
+                      <td>
+                        <div style={{ position: 'relative', height: `21px` }}>
+                          {
+                            topics_all[t].map((str) => ( <i style={{ position: 'absolute', float: 'left', left: `${str * 0.08}px`, width: '0.08px', height: `20px`, backgroundColor: 'blue' }} /> ))
+                          }
+                        </div>
+                      </td>
+
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          
+        ) : null
+      }</>)
+          
+      }
+    </div>) 
 };
 
 const FormatedDateTime: React.FC<{
