@@ -1,22 +1,72 @@
 .file {
+  position: fixed;
   text-align: left;
+  width: 100%;
+  z-index: 6;
+  background-color: white;
+  padding-top: 20px;
+  padding-left: 20px;
+  padding-bottom: 10px;
 }
 
 .baginfo {
+  margin-top: 33px;
   font-family: monospace;
 }
 
+.information {
+  padding-left: 20px;
+  padding-top: 20px;
+  position: fixed;
+  width: 100%;
+  z-index: 5;
+  background-color: white;
+}
+
+.dragFile {
+  padding: 20px;
+  position: relative;
+  margin-top: 50px;
+}
 .msgDef {
   cursor: help;
 }
-
-table td,
-table th {
-  padding: 3px 1em;
-  text-align: left;
+table {
+  width: 100%;
+  padding-top: 20px;
+  padding-left: 20px;
 }
 
-table td:first-child,
+thead tr th {
+  position: sticky;
+  padding: 3px 1em;
+  top: 130px;
+  text-align: left;
+  z-index: 2;
+  background-color: white;
+}
+
+table td {
+  padding: 3px 1em;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+table td:first-child {
+  position: sticky;
+  left: 0; /* 首行在左 */
+  z-index: 1;
+  background-color: white;
+}
+
 table th:first-child {
-  padding-left: 0;
+  position: sticky;
+  left: 0; /* 首行在左 */
+  z-index: 3;
+  background-color: white;
+}
+
+table th:last-child {
+  z-index: 2;
+  background-color: white;
 }
