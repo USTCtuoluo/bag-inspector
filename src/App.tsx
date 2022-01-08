@@ -12,6 +12,15 @@ const App = (props: any) => {
     parseFile(files)
   }, [])
 
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop })
+  const [topicCounter, setTopicCounter] = useState<any>()
+  const [isDragFile, setIsDragFile] = useState<boolean>(true)
+  const [metadata, setMetadata] = useState<any>(null)
+  const [topicList, setTopicList] = useState<string[]>([])
+  const [progress, setProgress] = useState<number>(0)
+  const [tpoicSum, setTopicSum] = useState<number>(0)
+  const [msgDefinitions, setMsgDefinitions] = useState<Map<string, string[]>>(new Map())
+
   const process = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
     parseFile(files)
@@ -27,7 +36,8 @@ const App = (props: any) => {
       return
     }
     const bag = await open(files[0])
-
+    let sum = (bag.endTime.sec - bag.startTime.sec) * 500 + parseInt(((bag.endTime.sec - bag.startTime.sec) / 2000000) as any)
+    setTopicSum(sum)
     setMetadata({
       startTime: bag.startTime,
       endTime: bag.endTime,
@@ -68,6 +78,7 @@ const App = (props: any) => {
         // (timestamp.sec - bag.startTime.sec) * 500  秒 * 500
         // ((timestamp.nsec - bag.startTime.nsec) / 2000000) 纳秒除以 500
         let num = (timestamp.sec - bag.startTime.sec) * 500 + parseInt(((timestamp.nsec - bag.startTime.nsec) / 2000000) as any)
+
         if (topics_all[topic]) {
           let temp = topics_all[topic]
           if (temp[temp.length - 1] !== num) {
@@ -94,15 +105,6 @@ const App = (props: any) => {
     setTopicList(Array.from(topics).sort())
   }
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop })
-  const [topicCounter, setTopicCounter] = useState<any>()
-  const [isDragFile, setIsDragFile] = useState<boolean>(true)
-  const [metadata, setMetadata] = useState<any>(null)
-  const [topicList, setTopicList] = useState<string[]>([])
-  // const [topicCounter, setTopicCounter] = useState<any>();
-  const [progress, setProgress] = useState<number>(0)
-  const [msgDefinitions, setMsgDefinitions] = useState<Map<string, string[]>>(new Map())
-
   return (
     <div>
       <div style={{ height: '1px', width: '100%' }}>
@@ -112,7 +114,7 @@ const App = (props: any) => {
         </div>
       </div>
       {isDragFile ? (
-        <div {...getRootProps()} className="dragFile" style={{ width: '100%', height: '800px', backgroundColor: '#2B2A32', textAlign: 'center', lineHeight: '800px', fontSize: '50px', color: 'white' }}>
+        <div {...getRootProps()} className="dragFile">
           <input {...getInputProps()} onChange={process} />
           {isDragActive ? <p>正在拖拽bag</p> : <p>将文件拖拽到此处,或者单击此处上传bag</p>}
         </div>
@@ -125,7 +127,7 @@ const App = (props: any) => {
                 <div className="information">
                   <hr />
                   <div>
-                    <b>Start Time: </b>
+                    <b>Start Time:</b>
                     <FormatedDateTime datetime={metadata.startTime}></FormatedDateTime>
                   </div>
                   <div>
@@ -169,7 +171,15 @@ const App = (props: any) => {
                           <td>{topicCounter[t]}</td>
                           <td>{Math.round(topicCounter[t] / metadata.duration)}hz</td>
                           <td>
-                            <div style={{ position: 'relative', height: `21px` }}>
+                            <div
+                              style={{
+                                position: 'relative',
+                                height: `21px`,
+                                marginRight: '400px',
+                                width: `${tpoicSum * 0.08}px`,
+                                backgroundColor: '#D3D3D3',
+                              }}
+                            >
                               {topics_all[t].map((str) => (
                                 <i style={{ position: 'absolute', float: 'left', left: `${str * 0.08}px`, width: '0.08px', height: `20px`, backgroundColor: 'blue' }} />
                               ))}
